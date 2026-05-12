@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>批量文件重命名</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>批量文件重命名</h1>
+    <p>文件在本地浏览器内处理，不会上传任何服务器</p>
+  </header>
+
+  <!-- Drop Zone -->
+  <div id="dropZone" class="drop-zone">
+    <span class="drop-icon">📂</span>
+    <p>拖拽文件到此处，或 <button type="button">点击选择</button></p>
+    <p class="drop-hint">支持任意类型、任意数量</p>
+    <input id="fileInput" type="file" multiple>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="main-grid">
+
+    <!-- File List -->
+    <section class="panel">
+      <div class="panel-header">
+        <h2>文件列表 <span id="fileCount" class="badge">0</span></h2>
+        <div class="btn-group">
+          <button onclick="sortFiles('name')">按名称</button>
+          <button onclick="sortFiles('size')">按大小</button>
+          <button onclick="reverseFiles()">反转</button>
+          <button onclick="clearFiles()" class="btn-danger">清空</button>
+        </div>
+      </div>
+      <ul id="fileList" class="file-list">
+        <li class="file-list-empty">暂无文件</li>
+      </ul>
+    </section>
+
+    <!-- Rules Panel -->
+    <section class="panel">
+      <h2>重命名规则</h2>
+      <div class="rules-list">
+
+        <!-- 添加前缀 -->
+        <div class="rule-block">
+          <label class="rule-label">
+            <input type="checkbox" id="chk-prefix" onchange="onRuleChange()">
+            添加前缀
+          </label>
+          <div class="rule-inputs" id="ctrl-prefix">
+            <input type="text" id="val-prefix" placeholder="前缀文字" oninput="onRuleChange()" disabled>
+          </div>
+        </div>
+
+        <!-- 添加后缀 -->
+        <div class="rule-block">
+          <label class="rule-label">
+            <input type="checkbox" id="chk-suffix" onchange="onRuleChange()">
+            添加后缀
+          </label>
+          <div class="rule-inputs" id="ctrl-suffix">
+            <input type="text" id="val-suffix" placeholder="后缀文字（扩展名前）" oninput="onRuleChange()" disabled>
+          </div>
+        </div>
+
+        <!-- 查找替换 -->
+        <div class="rule-block">
+          <label class="rule-label">
+            <input type="checkbox" id="chk-replace" onchange="onRuleChange()">
+            查找替换
+          </label>
+          <div class="rule-inputs" id="ctrl-replace">
+            <input type="text" id="val-find" placeholder="查找" oninput="onRuleChange()" disabled>
+            <span class="arrow">→</span>
+            <input type="text" id="val-to" placeholder="替换为（留空则删除）" oninput="onRuleChange()" disabled>
+            <label><input type="checkbox" id="chk-case-sensitive" onchange="onRuleChange()" disabled> 区分大小写</label>
+          </div>
+        </div>
+
+        <!-- 序号编号 -->
+        <div class="rule-block">
+          <label class="rule-label">
+            <input type="checkbox" id="chk-number" onchange="onRuleChange()">
+            序号编号
+          </label>
+          <div class="rule-inputs" id="ctrl-number">
+            <label>起始 <input type="number" id="val-start" value="1" min="0" oninput="onRuleChange()" disabled></label>
+            <label>位数 <input type="number" id="val-digits" value="3" min="1" max="9" oninput="onRuleChange()" disabled></label>
+            <label><input type="radio" name="num-pos" value="prefix" checked onchange="onRuleChange()" disabled> 前缀</label>
+            <label><input type="radio" name="num-pos" value="suffix" onchange="onRuleChange()" disabled> 后缀</label>
+            <label><input type="checkbox" id="chk-keep-original" checked onchange="onRuleChange()" disabled> 保留原文件名</label>
+          </div>
+        </div>
+
+        <!-- 大小写转换 -->
+        <div class="rule-block">
+          <label class="rule-label">
+            <input type="checkbox" id="chk-case" onchange="onRuleChange()">
+            大小写转换
+          </label>
+          <div class="rule-inputs" id="ctrl-case">
+            <label><input type="radio" name="case-type" value="upper" onchange="onRuleChange()" disabled> 全大写</label>
+            <label><input type="radio" name="case-type" value="lower" checked onchange="onRuleChange()" disabled> 全小写</label>
+            <label><input type="radio" name="case-type" value="title" onchange="onRuleChange()" disabled> 首字母大写</label>
+          </div>
+        </div>
+
+        <!-- 删除字符 -->
+        <div class="rule-block">
+          <label class="rule-label">
+            <input type="checkbox" id="chk-delete" onchange="onRuleChange()">
+            删除字符
+          </label>
+          <div class="rule-inputs" id="ctrl-delete">
+            <input type="text" id="val-del-chars" placeholder="删除指定字符串" oninput="onRuleChange()" disabled>
+            <label>删前 <input type="number" id="val-del-start" value="0" min="0" oninput="onRuleChange()" disabled> 个</label>
+            <label>删后 <input type="number" id="val-del-end" value="0" min="0" oninput="onRuleChange()" disabled> 个</label>
+          </div>
+        </div>
+
+        <!-- 修改扩展名 -->
+        <div class="rule-block">
+          <label class="rule-label">
+            <input type="checkbox" id="chk-ext" onchange="onRuleChange()">
+            修改扩展名
+          </label>
+          <div class="rule-inputs" id="ctrl-ext">
+            <input type="text" id="val-ext" placeholder=".jpg" oninput="onRuleChange()" disabled>
+          </div>
+        </div>
+
+      </div>
+    </section>
+  </div>
+
+  <!-- Preview Table -->
+  <section class="panel">
+    <h2>实时预览</h2>
+    <div class="table-wrap">
+      <table class="preview-table">
+        <thead>
+          <tr>
+            <th>原文件名</th>
+            <th>新文件名</th>
+            <th>状态</th>
+          </tr>
+        </thead>
+        <tbody id="previewBody">
+          <tr><td colspan="3" class="empty-row">请先添加文件</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Export Bar -->
+  <div class="export-bar">
+    <div class="zip-name-group">
+      <span>zip 文件名：</span>
+      <input type="text" id="zipName" value="renamed_files">
+      <span>.zip</span>
+    </div>
+    <button id="downloadBtn" onclick="downloadZip()" disabled class="btn-primary">
+      下载 zip 包
+    </button>
+  </div>
+
+</div>
+
+<script src="rename.js"></script>
+<script src="validator.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
