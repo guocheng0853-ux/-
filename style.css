@@ -241,6 +241,13 @@ header p  { color: var(--muted); font-size: 13px; margin-top: 4px; }
 }
 
 /* ── Responsive ─────────────────────────────────── */
+.site-footer {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 16px 0 8px;
+}
+
 @media (max-width: 720px) {
   .main-grid { grid-template-columns: 1fr; }
   .drop-zone { padding: 28px 16px; }
